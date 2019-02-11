@@ -28,6 +28,8 @@ Class MangoOffice {
      */
     protected $request = null;
 
+    protected $logPath = false;
+
 
     /**
      * Инициализация класса
@@ -68,6 +70,11 @@ Class MangoOffice {
      */
     function setApiKey($key) {
         $this->vpbx_api_key = $key;
+        return $this;
+    }
+
+    function setLogPath($path) {
+        $this->logPath = $path;
         return $this;
     }
 
@@ -230,6 +237,17 @@ Class MangoOffice {
                 curl_setopt($curl, CURLOPT_POSTFIELDS, $query);
                 $data = curl_exec($curl);
                 curl_close($curl);
+            }
+            if ($this->logPath) {
+                $logFileName = date('Y_m_d_H_i_s').'_request_response.txt';
+                $logLine = "time = ".date('Y-m-d H:i:s')."\n";
+                file_put_contents($this->logPath . "/" . $logFileName, $logLine, FILE_APPEND);
+                $logLine = "url = {$url}\n";
+                file_put_contents($this->logPath . "/" . $logFileName, $logLine, FILE_APPEND);
+                $logLine = "payload = ".json_encode($post)."\n";
+                file_put_contents($this->logPath . "/" . $logFileName, $logLine, FILE_APPEND);
+                $logLine = "response = {$data}\n";
+                file_put_contents($this->logPath . "/" . $logFileName, $logLine, FILE_APPEND);
             }
         }
         if ($ret = json_decode($data)) {
