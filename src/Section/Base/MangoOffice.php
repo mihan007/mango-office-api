@@ -11,6 +11,8 @@ use Symfony\Component\HttpFoundation\Request;
  */
 Class MangoOffice {
 
+    const STAT_REPEAT_AMOUNT = 10;
+
     /**
      * @var string
      */
@@ -337,11 +339,37 @@ Class MangoOffice {
             'key'        => $stat_key_data->key,
             'request_id' => $request_id
         ];
-        $info = $this->putCmd('stats/result', $data, false);
 
-        if (isset($info->code)) {
-            return MangoOfficeError::error($info->code);
-        }
+        $counter = 1;
+
+        do {
+            $info = $this->putCmd('stats/result', $data, false);
+
+            if (isset($info->code)) {
+                if ($this->logPath) {
+                    $logFileName = date('Y_m_d_H_i_s').'_request_response.txt';
+                    $logLine = "As result of {$counter}-th request got error. Error code: {$info->code}. Stop request.\n";
+                    file_put_contents($this->logPath . "/" . $logFileName, $logLine, FILE_APPEND);
+                }
+                return MangoOfficeError::error($info->code);
+            }
+
+            if (strlen($info)>0) {
+                if ($this->logPath) {
+                    $logFileName = date('Y_m_d_H_i_s').'_request_response.txt';
+                    $logLine = "As result of {$counter}-th request got result of stat with size: ".strlen($info).", finish request\n";
+                    file_put_contents($this->logPath . "/" . $logFileName, $logLine, FILE_APPEND);
+                }
+                break;
+            } else {
+                if ($this->logPath) {
+                    $logFileName = date('Y_m_d_H_i_s').'_request_response.txt';
+                    $logLine = "As result of {$counter}-th request got nothing as result of request. Trying again if limit of request not reached\n";
+                    file_put_contents($this->logPath . "/" . $logFileName, $logLine, FILE_APPEND);
+                }
+                sleep(5);
+            }
+        } while ($counter <= self::STAT_REPEAT_AMOUNT);
 
         return $this->getCsv($info, $fields);
     }
